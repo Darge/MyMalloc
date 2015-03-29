@@ -70,7 +70,7 @@ void printMemory();
 void addElement(superBlock* element) // adds an element to an already existing list (can be empty)
 {
 	assert(element != NULL);
-	DEBUG_PRINT(printf("Ktos dodaje nowy blok o rozmiarze %d\n", element->size);)
+	DEBUG_PRINT(printf("Someone is adding a block of size %d\n", element->size);)
 
 	//check if the list is empty
 	if (beginningSuperBlock == NULL)
@@ -99,7 +99,7 @@ void addElement(superBlock* element) // adds an element to an already existing l
 	// case of a longer list
 	if (beginningSuperBlock>element)
 	{
-		DEBUG_PRINT(printf("Czyli dodajemy cos na sam poczatek listy wolnych blokow\n");)
+		DEBUG_PRINT(printf("We are adding something to the beginning of the free blocks list\n");)
 		element->next = beginningSuperBlock;
 		element->prev = beginningSuperBlock->prev;
 		(beginningSuperBlock->prev)->next = element;
@@ -141,13 +141,13 @@ void deleteElement(superBlock* element)
 	if (element->next == element->prev && element->next == beginningSuperBlock && element == beginningSuperBlock)
 	{
 		//assert(element == beginningSuperBlock);
-		DEBUG_PRINT(printf("Usuwamy cos z listy 1-elementowej\n");)
+		DEBUG_PRINT(printf("We are removing something from a 1-element list\n");)
 		beginningSuperBlock = NULL;
 		return;
 	}
 
 	// case of a list longer than 2 elements
-	DEBUG_PRINT(printf("Usuwamy cos z listy >=2 elementowej\n");)
+	DEBUG_PRINT(printf("We are removing something from a >=2 element list\n");)
 	superBlock* pr = element->prev;
 	superBlock* ne = element->next;
 
@@ -657,7 +657,7 @@ void UT8() // merging to both sides
 void ShowThatMemoryLeaksWouldReallyShowUpOnATest()
 {
 
-	char* ptr1 = malloc(1); // it also allocates sizeof(superBlock)
+	char* ptr1 = malloc(1); // note that it also allocates sizeof(superBlock)
 	// no free
 }
 

@@ -10,7 +10,7 @@ crash_library:
 	 gcc -DCRASH_THIS_LIB  -DFOR_LIBRARY_USAGE zad2.c -o libmyownmalloc.so -fPIC -shared
 
 run_library: library
-	LD_PRELOAD=$(shell pwd)/libmyownmalloc.so subl #/bin/ls
+	LD_PRELOAD=$(shell pwd)/libmyownmalloc.so firefox
 	
 build:
 	gcc zad2.c -std=gnu99

@@ -9,8 +9,9 @@ Tomasz Flendrich
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <pthread.h>
 
-#define DEBUG // to enable debug prints
+//#define DEBUG // to enable debug prints
 //#define FOR_LIBRARY_USAGE // to get rid of the main() function
 //#define CRASH_THIS_LIB // to see that it is in use
 
@@ -54,6 +55,8 @@ typedef struct superBlock
 }superBlock;
 
 struct superBlock* beginningSuperBlock = NULL; // when list has 0 elements, this is NULL
+pthread_mutex_t lock;
+
 
 void* malloc(size_t size);
 void* calloc(size_t count, size_t size);
@@ -65,10 +68,109 @@ void mergeBlocks(superBlock* sb);
 bool canBeBigger(superBlock* sb, size_t size);
 void printMemory();
 
+int mallopt(int param, int value)
+{
+	printf("We don't support it! Abort\n");
+	exit(1);
+}
 
+void* alloca(size_t size)
+{
+	printf("We don't support it! Abort\n");
+	exit(1);
+}
+void* malloc_get_state(void)
+{
+	printf("We don't support it! Abort\n");
+	exit(1);
+}
+int malloc_set_state(void *state)
+{
+	printf("We don't support it! Abort\n");
+	exit(1);
+}
+int malloc_info(int options, FILE *fp)
+{
+	printf("We don't support it! Abort\n");
+	exit(1);
+}
+void malloc_trim(size_t pad)
+{
+	printf("We don't support it! Abort\n");
+	exit(1);
+}
+size_t malloc_usable_size (void *ptr)
+{
+	printf("We don't support it! Abort\n");
+	exit(1);
+}
+enum mcheck_status
+{
+	MCHECK_DISABLED = -1,       /* Consistency checking is not turned on.  */
+	MCHECK_OK,                  /* Block is fine.  */
+	MCHECK_FREE,                /* Block freed twice.  */
+	MCHECK_HEAD,                /* Memory before the block was clobbered.  */
+	MCHECK_TAIL                 /* Memory after the block was clobbered.  */
+};
+int mcheck(void (*abortfunc)(enum mcheck_status mstatus))
+{
+	printf("We don't support it! Abort\n");
+	exit(1);
+}
+int mcheck_pedantic(void (*abortfunc)(enum mcheck_status mstatus))
+{
+	printf("We don't support it! Abort\n");
+	exit(1);
+}
+void mcheck_check_all(void)
+{
+	printf("We don't support it! Abort\n");
+	exit(1);
+}
+enum mcheck_status mprobe(void *ptr)
+{
+	printf("We don't support it! Abort\n");
+	exit(1);
+}
+void mtrace(void)
+{
+	printf("We don't support it! Abort\n");
+	exit(1);
+}
+void muntrace(void)
+{
+	printf("We don't support it! Abort\n");
+	exit(1);
+}
+int posix_memalign(void **memptr, size_t alignment, size_t size)
+{
+	printf("We don't support it! Abort\n");
+	exit(1);
+}
+void *aligned_alloc(size_t alignment, size_t size)
+{
+	printf("We don't support it! Abort\n");
+	exit(1);
+}
+void *valloc(size_t size)
+{
+	printf("We don't support it! Abort\n");
+	exit(1);
+}
+void *memalign(size_t alignment, size_t size)
+{
+	printf("We don't support it! Abort\n");
+	exit(1);
+}
+void *pvalloc(size_t size)
+{
+	printf("We don't support it! Abort\n");
+	exit(1);
+}
 
 void addElement(superBlock* element) // adds an element to an already existing list (can be empty)
 {
+
 	assert(element != NULL);
 	DEBUG_PRINT(printf("Someone is adding a block of size %d\n", element->size);)
 
@@ -162,7 +264,7 @@ void deleteElement(superBlock* element)
 
 
 
-void* malloc(size_t size)
+void* myMalloc(size_t size)
 {
 	CRASH_THIS_LIB_MACRO( *((int*)123) = 35);
 
@@ -202,8 +304,7 @@ void* malloc(size_t size)
 		}
 		while (p->next != beginningSuperBlock);
 	}
-
-
+	DEBUG_PRINT(printf("A new allocation is needed!\n\n");)
 
 	// a new allocation is needed
 	void* ptr = mmap(NULL, size+sizeof(struct superBlock), PROT_EXEC | PROT_WRITE | PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, 0, 0);
@@ -212,14 +313,17 @@ void* malloc(size_t size)
 		printf("mmap() failed!\n\n\n");
 		exit(1);
 	}
+	DEBUG_PRINT(printf("I am here1\n\n");)
 
 	struct superBlock* sb = ptr;
+
 	sb->size = size + sizeof(struct superBlock);
 	sb->wholeSize = size + sizeof(struct superBlock);
+	DEBUG_PRINT(printf("I am here2\n\n");)
 
 	return ptr + sizeof(struct superBlock);
 }
-void free(void *notMovedPtr)
+void myFree(void *notMovedPtr)
 {
 	DEBUG_PRINT(printf("*Someone told me to free()\n");)
 	if (notMovedPtr == NULL)
@@ -303,31 +407,32 @@ void mergeBlocks(superBlock* sb) // także zwalnia blok, gdy jest caly
 
 }
 
-void* realloc(void *ptr, size_t size)
+void* myRealloc(void *ptr, size_t size)
 {
+	if (size == 0)
+	{
+		DEBUG_PRINT(printf("Ktos mi kazal realloca zrobic na size = 0 (czyli zasadniczo chca free() na ptr)\n");)
+		myFree(ptr); 
+		return NULL;
+	}
+
+	if (ptr == NULL)
+	{
+		return myMalloc(size);
+	}
+
 	DEBUG_PRINT(printf("Ktos mi kazal realloca zrobic\n");)
 	if (ptr == NULL)
 	{
 		DEBUG_PRINT(printf("Ktos mi kazal realloca zrobic na ptr = NULL\n");)
-		return malloc(size);
+		return myMalloc(size);
 	}
 
-	if (size == 0)
-	{
-		DEBUG_PRINT(printf("Ktos mi kazal realloca zrobic na size = 0 (czyli zasadniczo chca free() na ptr)\n");)
-		free(ptr); 
-		return NULL;
-	}
 
 	DEBUG_PRINT(printf("*Realokacja na %zu bajtów (+ sizeof). Wcześniej było ich %zu (+sizeof)\n", size, ((superBlock*)(ptr - sizeof(superBlock)))->size - sizeof(superBlock));)
 
 	superBlock* newSB = ptr + size;
-	if (ptr == NULL)
-	{
-		return malloc(size);
-	}
 
-	
 	superBlock* sb = ptr - sizeof(superBlock);
 	if (size < sb->size - sizeof(superBlock)) // we want it smaller
 	{
@@ -359,18 +464,22 @@ void* realloc(void *ptr, size_t size)
 		DEBUG_PRINT(printf("Chcę powiększyć swój blok!\n");)
 		// making it bigger fits
 		if (canBeBigger(sb, size))
+		{
 			return ptr;
+		}
 
 
 
 		// making it bigger doesn't fit
-		DEBUG_PRINT(printf("Powiekszenie sie nie zmiesci, wiec znajde inne miejse mallocem()\n");)
-		void* returnPtr = malloc(size);
+		DEBUG_PRINT(printf("Powiekszenie sie nie zmiesci, wiec znajde inne miejsce mallocem()\n");)
+		void* returnPtr = myMalloc(size);
+		DEBUG_PRINT(printf("I am here3\n\n");)
 
 
-		memcpy(returnPtr, ptr, size);
+		memcpy(returnPtr, ptr, sb->size - sizeof(superBlock));
 		addElement(((void*)ptr) - sizeof(superBlock));
 		mergeBlocks(((void*)ptr) - sizeof(superBlock));
+		DEBUG_PRINT(printf("I am here4\n\n");)
 		return returnPtr;
 	}
 
@@ -444,6 +553,7 @@ void printMemory() // also tests the memory
 		return;
 	}
 
+	printf("We've got more than 1 block here\n");
 	superBlock* ptr = beginningSuperBlock;
 	assert(beginningSuperBlock->next != beginningSuperBlock);
 	while(ptr->next != beginningSuperBlock) // more than 1 block
@@ -458,9 +568,49 @@ void printMemory() // also tests the memory
 	printf("END OF MEMORY:\n\n");
 }
 
-void* calloc(size_t nmemb, size_t size) // make sure it works
+void* myCalloc(size_t nmemb, size_t size) // make sure it works
 {
-	return malloc(nmemb*size);
+	return myMalloc(nmemb*size);
+}
+
+void* malloc(size_t size)
+{
+	DEBUG_PRINT(printf("I am trying to lock on malloc\n");)
+	pthread_mutex_lock(&lock);
+	DEBUG_PRINT(printf("I locked\n");)
+	void* ret = myMalloc(size);
+	pthread_mutex_unlock(&lock);
+	DEBUG_PRINT(printf("I unlocked\n");)
+	return ret;
+}
+void* realloc(void *ptr, size_t size)
+{
+	DEBUG_PRINT(printf("I am trying to lock on realloc\n");)
+	pthread_mutex_lock(&lock);
+	DEBUG_PRINT(printf("I locked\n");)
+	void* ret = myRealloc(ptr, size);
+	pthread_mutex_unlock(&lock);
+	DEBUG_PRINT(printf("I unlocked\n");)
+	return ret;
+}
+void* calloc(size_t nmemb, size_t size)
+{
+	DEBUG_PRINT(printf("I am trying to lock on calloc\n");)
+	pthread_mutex_lock(&lock);
+	DEBUG_PRINT(printf("I locked\n");)
+	void* ret = myCalloc(nmemb, size);
+	pthread_mutex_unlock(&lock);
+	DEBUG_PRINT(printf("I unlocked\n");)
+	return ret;
+}
+void free(void *notMovedPtr)
+{
+	DEBUG_PRINT(printf("I am trying to lock on free %d\n", notMovedPtr);)
+	pthread_mutex_lock(&lock);
+	DEBUG_PRINT(printf("I locked\n");)
+	myFree(notMovedPtr);
+	pthread_mutex_unlock(&lock);
+	DEBUG_PRINT(printf("I unlocked\n");)
 }
 
 void UT1()
@@ -665,6 +815,12 @@ void ShowThatMemoryLeaksWouldReallyShowUpOnATest()
 #ifndef FOR_LIBRARY_USAGE
 int main()
 {
+
+	if (pthread_mutex_init(&lock, NULL) != 0)
+    {
+        printf("\n mutex init failed\n");
+        return 1;
+    }
 	for (int i = 0; i < 1000*1000; i++)
 	{
 		UT1();
